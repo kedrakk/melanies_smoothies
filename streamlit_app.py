@@ -4,6 +4,7 @@ import streamlit as st
 from snowflake.snowpark.functions import col
 from cryptography.hazmat.primitives import serialization
 import requests  
+import pandas as pd
 
 # Write directly to the app
 st.title(f":cup_with_straw: Customize Your Smoothie! :cup_with_straw:")
@@ -31,8 +32,13 @@ private_key_der = key.private_bytes(
 # session = get_active_session()
 cnx = st.connection("snowflake", private_key=private_key_der)
 session = cnx.session()
-my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'))
+my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'),col('SEARCH_ON'))
 # st.dataframe(data=my_dataframe, use_container_width=True)
+# st.stop()
+
+pd_df = my_dataframe.to_pandas()
+st.dataframe(pd_df)
+st.stop()
 
 ingredients_list = st.multiselect(
     "Choose up to 5 ingredients:",
@@ -48,6 +54,10 @@ if ingredients_list:
     ingredients_string = ''
     for ing in ingredients_list:
         ingredients_string += ing + ' '
+
+        search_on=pd_df.loc[pd_df['FRUIT_NAME'] == ing, 'SEARCH_ON'].iloc[0]
+        st.write('The search value for ', ing,' is ', search_on, '.')
+
         st.subheader(ing + " Nutrition Information")
         smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/" + ing)
         sf_df = st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
